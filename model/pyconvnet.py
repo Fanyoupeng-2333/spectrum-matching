@@ -1,111 +1,7 @@
-""" PyConv networks for image recognition as presented in our paper:
-    Duta et al. "Pyramidal Convolution: Rethinking Convolutional Neural Networks for Visual Recognition"
-    https://arxiv.org/pdf/2006.11538.pdf
-"""
 import torch
 import torch.nn as nn
 import os
-# from div.download_from_url import download_from_url
 
-# try:
-#     from torch.hub import _get_torch_home
-#     torch_cache_home = _get_torch_home()
-# except ImportError:
-#     torch_cache_home = os.path.expanduser(
-#         os.getenv('TORCH_HOME', os.path.join(
-#             os.getenv('XDG_CACHE_HOME', '~/.cache'), 'torch')))
-# default_cache_path = os.path.join(torch_cache_home, 'pretrained')
-
-__all__ = ['PyConvResNet', 'pyconvresnet18', 'pyconvresnet34', 'pyconvresnet50', 'pyconvresnet101', 'pyconvresnet152']
-
-
-model_urls = {
-    'pyconvresnet50': 'https://drive.google.com/uc?export=download&id=128iMzBnHQSPNehgb8nUF5cJyKBIB7do5',
-    'pyconvresnet101': 'https://drive.google.com/uc?export=download&id=1fn0eKdtGG7HA30O5SJ1XrmGR_FsQxTb1',
-    'pyconvresnet152': 'https://drive.google.com/uc?export=download&id=1zR6HOTaHB0t15n6Nh12adX86AhBMo46m',
-}
-
-class eca_layer2(nn.Module):
-    """Constructs a ECA module.
-
-    Args:
-        channel: Number of channels of the input feature map
-        k_size: Adaptive selection of kernel size
-    """
-    def __init__(self, channel, k_size=3):
-        super(eca_layer, self).__init__()
-        self.avg_pool = nn.AdaptiveAvgPool1d(3)
-        self.conv = nn.Conv1d(1, 1, kernel_size=k_size, padding=(k_size - 1) // 2, bias=False) 
-        self.conv2 = nn.Conv1d(1, 1, kernel_size=5,    padding=(k_size - 1) // 2, bias=False) 
-        # self.conv3 = nn.Conv1d(1, 1, kernel_size=7,    padding=(k_size - 1) // 2, bias=False) 
-        self.sigmoid = nn.Sigmoid()
-
-    def forward(self, x):
-        # feature descriptor on the global spatial information
-        # print('x',x.size())
-        y = self.avg_pool(x)
-        # print(y.size())
-        # Two different branches of ECA module
-        y=y.transpose(-1, -2)
-        # print(y.size())
-        x1=y[:,0,:].unsqueeze(1)
-        x2=y[:,1,:].unsqueeze(1)
-        x3=y[:,2,:].unsqueeze(1)
-        # print(x1.size())
-        y1 = self.conv(x1).transpose(-1, -2)
-        y2 = self.conv(x2).transpose(-1, -2)
-        # y3 = self.conv(x3).transpose(-1, -2)
-        y=y1+y2
-        # print(y.size())
-        # y = self.conv(y.transpose(-1, -2)).transpose(-1, -2)
-
-        # Multi-scale information fusion
-        y = self.sigmoid(y)
-        tt=x * y.expand_as(x)
-        # print(y.size(),tt.size(),'tt.size()')
-
-        return tt#x * y.expand_as(x)
-
-class eca_layer3(nn.Module):
-    """Constructs a ECA module.
-
-    Args:
-        channel: Number of channels of the input feature map
-        k_size: Adaptive selection of kernel size
-    """
-    def __init__(self, channel, k_size=3):
-        super(eca_layer, self).__init__()
-        self.avg_pool = nn.AdaptiveAvgPool1d(3)
-        self.conv = nn.Conv1d(1, 1, kernel_size=k_size, padding=(k_size - 1) // 2, bias=False) 
-        self.conv2 = nn.Conv1d(1, 1, kernel_size=5,    padding=(k_size - 1) // 2, bias=False) 
-        self.conv3 = nn.Conv1d(1, 1, kernel_size=7,    padding=(k_size - 1) // 2, bias=False) 
-        self.sigmoid = nn.Sigmoid()
-
-    def forward(self, x):
-        # feature descriptor on the global spatial information
-        # print('x',x.size())
-        y = self.avg_pool(x)
-        # print(y.size())
-        # Two different branches of ECA module
-        y=y.transpose(-1, -2)
-        # print(y.size())
-        x1=y[:,0,:].unsqueeze(1)
-        x2=y[:,1,:].unsqueeze(1)
-        x3=y[:,2,:].unsqueeze(1)
-        # print(x1.size())
-        y1 = self.conv(x1).transpose(-1, -2)
-        y2 = self.conv(x2).transpose(-1, -2)
-        y3 = self.conv(x3).transpose(-1, -2)
-        y=y1+y2+y3
-        # print(y.size())
-        # y = self.conv(y.transpose(-1, -2)).transpose(-1, -2)
-
-        # Multi-scale information fusion
-        y = self.sigmoid(y)
-        tt=x * y.expand_as(x)
-        # print(y.size(),tt.size(),'tt.size()')
-
-        return tt#x * y.expand_as(x)
 
 class eca_layer(nn.Module):
     """Constructs a ECA module.
@@ -483,45 +379,8 @@ class PyConvResNet(nn.Module):
         return x
 
 
-def pyconvresnet18(pretrained=False, **kwargs):
-    """Constructs a PyConvResNet-18 model.
-
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
-    """
-    #model = PyConvResNet(PyConvBasicBlock1, [2, 2, 2, 2], **kwargs) #params=11.21M GFLOPs 1.55
-    model = PyConvResNet(PyConvBasicBlock2, [2, 2, 2, 2], **kwargs)  #params=5.91M GFLOPs 0.88
-    if pretrained:
-        raise NotImplementedError("Not available the pretrained model yet!")
-
-    return model
-
-
-def pyconvresnet34(pretrained=False, **kwargs):
-    """Constructs a PyConvResNet-34 model.
-
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
-    """
-    #model = PyConvResNet(PyConvBasicBlock1, [3, 4, 6, 3], **kwargs) #params=20.44M GFLOPs 3.09
-    model = PyConvResNet(PyConvBasicBlock2, [3, 4, 6, 3], **kwargs)  #params=11.09M GFLOPs 1.75
-    if pretrained:
-        raise NotImplementedError("Not available the pretrained model yet!")
-
-    return model
-
-
 def pyconvresnet50(pretrained=False, **kwargs):
-    """Constructs a PyConvResNet-50 model.
-
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on ImageNet
-    """
     model = PyConvResNet(PyConvBlock, [1, 1, 1, 1], **kwargs)
-    # if pretrained:
-    #     os.makedirs(default_cache_path, exist_ok=True)
-    #     model.load_state_dict(torch.load(download_from_url(model_urls['pyconvresnet50'],
-    #                                                        root=default_cache_path)))
     return model
 
 

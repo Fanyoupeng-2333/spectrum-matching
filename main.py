@@ -44,10 +44,10 @@ import random
 parser = argparse.ArgumentParser(description='Train ConvNets for Spectrum Recognition')
 parser.add_argument('--model', dest="model", type=str)
 parser.set_defaults(model="siamese")
-parser.add_argument('--epochs', default=100, help='number of epochs', type=int)
-parser.add_argument('--batch_size', default=32, help='batch size', type=int)
+parser.add_argument('--epochs', default=50, help='number of epochs', type=int)
+parser.add_argument('--batch_size', default=16, help='batch size', type=int)
 parser.add_argument('--train', dest='train', action='store_true', help='flag to start training')
-parser.set_defaults(train=False)
+parser.set_defaults(train=True)
 parser.add_argument('--test', dest='test', action='store_true', help='run test')
 parser.set_defaults(test=False)
 parser.add_argument('--eval', dest='eval', action='store_true', help='run series of tests to evaluate performance')
@@ -70,7 +70,7 @@ parser.add_argument('--dataset_resplitting', dest='dataset_resplitting', action=
 parser.set_defaults(dataset_resplitting=False)
 parser.add_argument('--data_augmentation', dest='data_augmentation', action='store_true', help='use data augmentation or not.')
 parser.set_defaults(data_augmentation=False)
-parser.add_argument('--num_random_pairs_per_sample', default=10, help='number of random pairs per sample', type=int)
+parser.add_argument('--num_random_pairs_per_sample', default=30, help='number of random pairs per sample', type=int)
 parser.add_argument('--num_ways', default=5, help='number of classes', type=int)
 parser.add_argument('--num_shots', default=5, help='number of examples per class', type=int)
 parser.add_argument('--num_queries', default=1, help='number of querieis per episode', type=int)
@@ -81,14 +81,6 @@ args = parser.parse_args()
 
 
 DATASET_DIR = "datasets"
-# seed=2 #1 0 2 16 4
-# sedd=0
-# torch.manual_seed(sedd)
-# torch.cuda.manual_seed_all(sedd)
-# np.random.seed(seed)
-# random.seed(seed)
-# torch.backends.cudnn.deterministic = True
-
 ################################################################################
 # GLOBAL SETTINGS
 settings = {
@@ -116,19 +108,11 @@ settings = {
 
 logger = get_logger(log_file_name=args.log)
 settings['logger'] = logger
-# logger.info('seed:{}  sedd:{}'.format(seed,sedd))
 ###############################################################################
 # Dataset
-if args.dataset.lower() == "mineral_107":
-    settings['dataset_name'] = "MINERAL_107"
-    settings['dataset'] =  MINERAL_107(min_num_spec=2, 
-        preprocessing='modpolyfit')
-elif args.dataset.lower() == "rruff_cmp":
+if  args.dataset.lower() == "rruff_cmp":
     settings['dataset_name'] = "RRUFF_CMP"
     settings['dataset'] =  RRUFF_CMP()
-elif args.dataset.lower() == "chemkitchen":
-    settings['dataset_name'] = "ChemKitchen"
-    settings['dataset'] = ChemKitchen(preprocessing=None)
 elif args.dataset.lower() == "usg":
     settings['dataset_name'] = "usg"
     settings['dataset'] =  RRUFF_USGS()
@@ -138,9 +122,6 @@ elif args.dataset.lower() == "usgs1":
 elif args.dataset.lower() == "lz18":
     settings['dataset_name'] = "lz18"
     settings['dataset'] =  Lorentz_18()
-# elif args.dataset.lower() == "usgs":
-#     settings['dataset_name'] = "usgs"
-#     settings['dataset'] =  RRUFF_USGS1()
 else:
     print('Not exist')
    
@@ -187,9 +168,6 @@ def setnet_config(model_name):
         net= LeNetClassifier(settings=lenet_settings, num_classes=settings['dataset'].n_classes)
         args.models_dir = os.path.join(args.models_dir, 'CNN')
     return net
-
-# settings['model'] = net
-
 
 ################################################################################
 def setup_seed(seed,sedd):
@@ -268,101 +246,7 @@ def main():
                 cnn_multi_class_test(data, settings,ii)         
         else:
             print('Model not found')
-        return 
-
-    if args.eval:        
-        sm_accs = []
-        l2_accs = []
-        cos_accs = []
-        for iter in range(10):
-            print('Eval run {}'.format(iter))
-            print('----------------------------------------------------------')
-            print('Notice: resplitting the dataset into training and test sets'
-                +' and save to disk for further usage')
-            print('----------------------------------------------------------')
-            data = split_training_test_classes(settings['dataset'], 
-                one_shot_test_only=True)
-
-            settings['epochs']=50
-            settings['batch_size']=16 #6
-            settings['num_random_pairs_per_sample']=4 #2
-            settings['models_dir']='TrainedModels/Siamese'
-            if os.path.exists(settings['models_dir']):
-                shutil.rmtree(settings['models_dir'])
-            os.mkdir(settings['models_dir'])
-            set_config_siamese(settings)
-            train_siamese_model(data)
-
-            sm_acc, cos_acc, l2_acc = one_shot_test(data, settings)
-            sm_accs += [sm_acc]
-            cos_accs += [cos_acc]
-            l2_accs += [l2_acc]
-
-        print('Siamese_acc {0:.6f}({1:.6f}),' 
-               ' cos_acc {2:.6f}({3:.6f}), l2_acc {4:.6f}({5:.6f})'.format(
-               np.mean(sm_accs), np.std(sm_accs), 
-               np.mean(cos_accs), np.std(cos_accs), 
-               np.mean(l2_accs), np.std(l2_accs)))
         return
-
-    if args.eval_stat:
-        sm_accs = []
-        cnn_accs = []
-        for iter in range(10):
-            print('@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@')
-            print('EVAL-RUN {}'.format(iter))            
-            print('Notice: resplitting the dataset into training and test sets'
-                +' and save to disk for further usage')
-            data = split_training_test_classes(settings['dataset'],
-                one_shot_test_only=False)
-            torch.save(data, os.path.join(DATASET_DIR, 
-                'train_test_classes.tensors'))
-            
-            # Train Siamese
-            settings['epochs']=100
-            settings['batch_size']=16 #6
-            settings['num_random_pairs_per_sample']=4 #2
-            settings['models_dir']='TrainedModels/Siamese'
-            if os.path.exists(settings['models_dir']):
-                shutil.rmtree(settings['models_dir'])
-            os.mkdir(settings['models_dir'])
-
-            net = SiameseNetwork(embedding_network=LeNet(settings=lenet_settings))
-            settings['model'] = net
-            set_config_siamese(settings)
-            train_siamese_model(data)
-            sm_acc = multi_class_test(data, settings)
-            sm_accs += [sm_acc]
-
-            print('----------------------------------------------------------')
-            # Train CNN
-            settings['epochs']=50
-            settings['batch_size']=16
-            settings['models_dir']='TrainedModels/CNN'
-            if os.path.exists(settings['models_dir']):
-                shutil.rmtree(settings['models_dir'])
-            os.mkdir(settings['models_dir'])
-
-            net = LeNetClassifier(settings=lenet_settings, num_classes=
-                settings['dataset'].n_classes)
-            settings['model'] = net
-            set_config_cnn(settings)
-            train_cnn_model(data)
-            cnn_acc = cnn_multi_class_test(data, settings)
-            cnn_accs += [cnn_acc]
-
-        print('Siamese_acc {0:.6f}({1:.6f}), cos_acc {2:.6f}({3:.6f})'.format(
-            np.mean(sm_accs), np.std(sm_accs),np.mean(cnn_accs), 
-            np.std(cnn_accs)))
-        return
-
-    if args.plot:
-        plot_dimension_reduction()
-        return 
-
-    print('Nothing will happen. Have fun!')
-
-
 
 if __name__ == "__main__":
 
@@ -413,20 +297,3 @@ if __name__ == "__main__":
         else:
             print('Model not found!')
 
-
-# if __name__ == "__main__":
-
-#     seeds = [0, 36, 89, 356, 26, 18, 642, 55, 2, 16]
-#     # for seed in range(20):
-
-#     for seed in seeds:
-#         settings['seed'] = seed
-#         setup_seed(settings['seed'])
-#         settings['data_path'] = cfg.DATASET.data_path + str(seed) + '.pth'
-#         logger.info(settings)
-#         settings['models_dir'] = 'TrainedModels' + str(args.idx_gpu)
-#         if not os.path.exists(settings['models_dir']):
-#             os.makedirs(settings['models_dir'])
-#         # os.environ['CUDA_VISIBLE_DEVICES'] = str(args.idx_gpu)
-#         set_config(settings, int(args.idx_gpu) % 4)
-#         main()

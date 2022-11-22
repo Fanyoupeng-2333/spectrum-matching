@@ -39,7 +39,6 @@ def set_config(settings):
     global _g_device
     _g_device = torch.device("cuda:1" if _g_settings['cuda'] else "cpu")
 
-
 def split_training_test_classes(dataset, sorting_labels=False, 
         one_shot_test_only=True):
     """Create pairs for siamese network training
@@ -129,7 +128,6 @@ def split_training_test_classes(dataset, sorting_labels=False,
         'loo_target':   y_test 
     }
     return splitted_data
-
 
 def train(splitted_data):
     # net, criterion, optimizer etc
@@ -283,70 +281,7 @@ def _run_net_one_epoch(net, optimizer, criterion, episodes, batch_size,
     return losses
 
    
-def plot_dimension_reduction():
-    from utils import split_dataset
-    from sklearn.metrics.pairwise import pairwise_distances
-    from sklearn.manifold import TSNE
-    from sklearn.decomposition import PCA
-    import itertools
 
-    net = siamese.SiameseNetwork()    
-    net_dict = torch.load('best_checkpoint_siamese.tar')
-    net.load_state_dict(net_dict['state_dict'])
-    net.eval()
-
-    splitted_data = torch.load('train_test.tensors')
-    X_tr, y_tr = splitted_data['train_input'], splitted_data['train_target']
-    X_va, y_va = splitted_data['valid_input'], splitted_data['valid_target']
-    X_te, y_te = splitted_data['test_input'], splitted_data['test_target']
-
-    # Convert input data into 3D tensors
-    X_tr = X_tr.reshape(X_tr.shape + (1,))
-    X_va = X_va.reshape(X_va.shape + (1,))
-    X_te = X_te.reshape(X_te.shape + (1,))
-    X_tr = np.transpose(X_tr, axes=[0, 2, 1]).astype('float32')
-    X_va = np.transpose(X_va, axes=[0, 2, 1]).astype('float32')
-    X_te = np.transpose(X_te, axes=[0, 2, 1]).astype('float32')
-
-    num_classes = dataset.n_classes
-    y_te = np.squeeze(y_te)
-
-    x = X_te
-    x = Variable(torch.from_numpy(x))
-    x_trans = net.base_net_forward(x)
-    x_trans = x_trans.data.numpy()
-
-    pca = PCA(n_components=0.99, svd_solver='full')
-    pca.fit(x_trans)
-    x_trans = pca.transform(x_trans)
-    print(x_trans.shape)
-
-    x_embedded = TSNE(n_components=2).fit_transform(x_trans)
-    print(x_embedded.shape)
-
-    N = 30
-    plt.figure()    
-    plt.ylabel('x2', fontsize='15')
-    plt.xlabel('x1', fontsize='15')
-    #marker = itertools.cycle((',', '+', '.', 'o', '*')) 
-    markers = [(2+i/2, 1+i%2, 0) for i in range(N)]
-    #c = ['#ff0000', '#ffff00', '#00ff00', '#00ffff', '#0000ff',
-    #         '#ff00ff', '#990000', '#999900', '#009900', '#009999']
-    
-    count = 0 
-    for l in range(51):
-        indexes = np.where(y_te == l)  
-        if len(indexes[0]) >= 1:
-            print(indexes)      
-            x_e = x_embedded[indexes[0],:]
-            c=np.random.rand(3,1)
-            for i in range(x_e.shape[0]):
-                plt.plot(x_e[i,0], x_e[i,1], marker=markers[count],
-                         c=c, markersize=10)
-            count += 1
-            if count > N:
-                break
-    plt.show()
 
 
 

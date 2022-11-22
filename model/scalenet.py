@@ -3,87 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as F #interpolate
 import json
 import math
-class eca_layer2(nn.Module):
-    """Constructs a ECA module.
-
-    Args:
-        channel: Number of channels of the input feature map
-        k_size: Adaptive selection of kernel size
-    """
-    def __init__(self, channel, k_size=3):
-        super(eca_layer, self).__init__()
-        self.avg_pool = nn.AdaptiveAvgPool1d(3)
-        self.conv = nn.Conv1d(1, 1, kernel_size=k_size, padding=(k_size - 1) // 2, bias=False) 
-        self.conv2 = nn.Conv1d(1, 1, kernel_size=5,    padding=(k_size - 1) // 2, bias=False) 
-        # self.conv3 = nn.Conv1d(1, 1, kernel_size=7,    padding=(k_size - 1) // 2, bias=False) 
-        self.sigmoid = nn.Sigmoid()
-
-    def forward(self, x):
-        # feature descriptor on the global spatial information
-        # print('x',x.size())
-        y = self.avg_pool(x)
-        # print(y.size())
-        # Two different branches of ECA module
-        y=y.transpose(-1, -2)
-        # print(y.size())
-        x1=y[:,0,:].unsqueeze(1)
-        x2=y[:,1,:].unsqueeze(1)
-        x3=y[:,2,:].unsqueeze(1)
-        # print(x1.size())
-        y1 = self.conv(x1).transpose(-1, -2)
-        y2 = self.conv(x2).transpose(-1, -2)
-        # y3 = self.conv(x3).transpose(-1, -2)
-        y=y1+y2
-        # print(y.size())
-        # y = self.conv(y.transpose(-1, -2)).transpose(-1, -2)
-
-        # Multi-scale information fusion
-        y = self.sigmoid(y)
-        tt=x * y.expand_as(x)
-        # print(y.size(),tt.size(),'tt.size()')
-
-        return tt#x * y.expand_as(x)
-
-class eca_layer3(nn.Module):
-    """Constructs a ECA module.
-
-    Args:
-        channel: Number of channels of the input feature map
-        k_size: Adaptive selection of kernel size
-    """
-    def __init__(self, channel, k_size=3):
-        super(eca_layer, self).__init__()
-        self.avg_pool = nn.AdaptiveAvgPool1d(3)
-        self.conv = nn.Conv1d(1, 1, kernel_size=k_size, padding=(k_size - 1) // 2, bias=False) 
-        self.conv2 = nn.Conv1d(1, 1, kernel_size=5,    padding=(k_size - 1) // 2, bias=False) 
-        self.conv3 = nn.Conv1d(1, 1, kernel_size=7,    padding=(k_size - 1) // 2, bias=False) 
-        self.sigmoid = nn.Sigmoid()
-
-    def forward(self, x):
-        # feature descriptor on the global spatial information
-        # print('x',x.size())
-        y = self.avg_pool(x)
-        # print(y.size())
-        # Two different branches of ECA module
-        y=y.transpose(-1, -2)
-        # print(y.size())
-        x1=y[:,0,:].unsqueeze(1)
-        x2=y[:,1,:].unsqueeze(1)
-        x3=y[:,2,:].unsqueeze(1)
-        # print(x1.size())
-        y1 = self.conv(x1).transpose(-1, -2)
-        y2 = self.conv(x2).transpose(-1, -2)
-        y3 = self.conv(x3).transpose(-1, -2)
-        y=y1+y2+y3
-        # print(y.size())
-        # y = self.conv(y.transpose(-1, -2)).transpose(-1, -2)
-
-        # Multi-scale information fusion
-        y = self.sigmoid(y)
-        tt=x * y.expand_as(x)
-        # print(y.size(),tt.size(),'tt.size()')
-
-        return tt#x * y.expand_as(x)
 
 class eca_layer(nn.Module):
     """Constructs a ECA module.
@@ -277,40 +196,5 @@ def scalenet50(structure_path, ckpt=None, **kwargs):
     layer = [1,1,1,1]  #[3, 4, 6, 3]
     structure = json.loads(open(structure_path).read())
     model = ScaleNet(SABlock, layer, structure, **kwargs)
-
-    # pretrained
-    if ckpt != None:
-        state_dict = torch.load(ckpt, map_location='cpu')
-        model.load_state_dict(state_dict)
-
     return model
 
-
-def scalenet101(structure_path, ckpt=None, **kwargs):
-    layer = [3, 4, 23, 3]
-    structure = json.loads(open(structure_path).read())
-    model = ScaleNet(SABlock, layer, structure, **kwargs)
-
-    # pretrained
-    if ckpt != None:
-        state_dict = torch.load(ckpt, map_location='cpu')
-        model.load_state_dict(state_dict)
-
-    return model
-
-
-def scalenet152(structure_path, ckpt=None, **kwargs):
-    layer = [3, 8, 36, 3]
-    structure = json.loads(open(structure_path).read())
-    model = ScaleNet(SABlock, layer, structure, **kwargs)
-
-    # pretrained
-    if ckpt != None:
-        state_dict = torch.load(ckpt, map_location='cpu')
-        model.load_state_dict(state_dict)
-
-    return model
-
-
-# [[30, 8, 10, 16, 56], [30, 9, 9, 16, 56], [30, 27, 7, 0, 56], [59, 55, 13, 1, 28], [59, 43, 8, 18, 28], [59, 57, 12, 0, 28], [59, 59, 9, 1, 28], [117, 65, 71, 3, 14], [107, 16, 33, 100, 14], [111, 49, 62, 34, 14], [106, 61, 61, 28, 14], [99, 71, 59, 27, 14], [76, 50, 67, 63, 14], [141, 182, 189, 0, 7], [83, 9, 185, 235, 7], [77, 16, 184, 235, 7]]
-# [[62, 9, 5, 12, 56], [55, 27, 5, 1, 56], [59, 26, 0, 3, 56], [125, 41, 6, 3, 28], [90, 39, 9, 37, 28], [106, 56, 4, 9, 28], [116, 56, 3, 0, 28], [223, 71, 55, 0, 14], [196, 104, 44, 5, 14], [195, 98, 52, 4, 14], [155, 128, 66, 0, 14], [134, 129, 86, 0, 14], [120, 127, 98, 4, 14], [237, 354, 106, 0, 7], [172, 435, 90, 0, 7], [138, 462, 97, 0, 7]]

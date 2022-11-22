@@ -46,38 +46,3 @@ class PyramidLeNet(nn.Module):
                 conv_layers += [nn.LeakyReLU(0.1,inplace=True)] #nn.ReLU(inplace=True)
                 in_channels = x
         return nn.Sequential(*conv_layers)
-
-
-class LeNetClassifier(nn.Module):
-    def __init__(self, settings, num_classes):
-        super(LeNetClassifier, self).__init__()
-        self.settings = settings
-        # self.num23 = 1
-        self.features = PyramidLeNet(settings=settings)
-        self.num_classes = num_classes
-        self.embedding_dim = 16512
-        self.head = self._make_head()
-        self.loss = nn.CrossEntropyLoss()
-        
-        print("LeNetClassifier LeNetClassifier LeNetClassifier LeNetClassifier")
-
-    def forward(self, x):
-        out = self.features(x) 
-        # print(out.size())       
-        # print(self.num23, out.size())
-        # self.num23 = self.num23 + 1   
-        out = out.view(out.size()[0], -1)
-        out = self.head(out)
-        return out
-
-    def _make_head(self):
-        head = []
-        head.append(nn.Linear(self.embedding_dim, self.num_classes))
-        # head.append(nn.BatchNorm1d(self.num_classes))
-        head.append(nn.LogSoftmax(dim=1))
-        print("world")
-        return nn.Sequential(*head)
-
-
-
-

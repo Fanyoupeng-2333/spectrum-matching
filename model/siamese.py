@@ -1,21 +1,6 @@
 import torch
 import torch.nn as nn
 
-class ContrastiveLoss(nn.Module):
-    """Contrastive loss function."""
-    def __init__(self, margin=1.0):
-        super(ContrastiveLoss, self).__init__()
-        self.margin = margin
-
-    def forward(self, dist, y):
-        mdist = self.margin - dist
-        mdist = torch.clamp(mdist, min=0.0)
-        mdist_sq = torch.pow(mdist, 2)
-        loss = y * mdist_sq + (1 - y) * torch.pow(dist, 2)
-        loss = torch.sum(loss) / 2.0 / dist.size()[0]        
-        return loss
-
-
 class SiameseNetwork(nn.Module):
     """Siamese network with weighted L1 distance"""
     def __init__(self, embedding_network):

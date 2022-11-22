@@ -8,18 +8,6 @@ import logging
 import datetime
 import os
 
-
-def mean_confidence_interval(data, confidence=0.95):
-    """ Compute confidence interval
-
-    """
-    a = 1.0*np.array(data)
-    n = len(a)
-    m, se = np.mean(a), scipy.stats.sem(a)
-    h = se * sp.stats.t._ppf((1+confidence)/2.0, n-1)
-    return m, h
-
-
 def save_checkpoint(state,seed,  is_best, filename, best_filename=None):
     """ Save checkpoints
 
@@ -45,7 +33,6 @@ def save_checkpoint(state,seed,  is_best, filename, best_filename=None):
             best_filename = "best_"+str(seed)+'_'+filename
             print(seed,best_filename)
         shutil.copyfile(filename, best_filename)
-
 
 def split_dataset(samples, labels, n_training=-1, n_test=-1, rnd_index=True):
     """Split data into training, test and validate sets.
@@ -93,29 +80,6 @@ def split_dataset(samples, labels, n_training=-1, n_test=-1, rnd_index=True):
     else:
         return X_test, y_test, X_train, y_train
 
-
-def convert_labels_to_onehot(y_labels, num_digits):
-    """ Convert labels to one hot encoding
-
-    Args:
-        y_labels (2D tensor): [batch_size, sequence_len]
-        num_digits (int): number of digits/classes
-    
-    Returns:
-        y_onehot (2D tensor): [batch_size, sequence_len, num_digits]
-    """
-    batch_size = y_labels.size()[0]
-    sequence_length = y_labels.size()[1]
-    y_labels_onehot = []
-    for i in range(batch_size):
-        y_labels_i = torch.unsqueeze(y_labels[i,:], 1)        
-        y_onehot = torch.FloatTensor(sequence_length, num_digits).zero_()
-        y_onehot.scatter_(1, y_labels_i, 1)
-        y_labels_onehot.append(y_onehot)
-    y_labels_onehot = torch.stack(y_labels_onehot)
-    return y_labels_onehot
-
-
 def get_logger(log_file_name):
     now = datetime.datetime.now()
     #log_file = r'.\Logs\log_' + now.strftime("%b-%d-%Y-%H%M%S") + '.txt'
@@ -148,7 +112,6 @@ def get_logger(log_file_name):
     logger.addHandler(console_handler)
 
     return logger
-
 
 def torch_tensor(inputs, targets, device):
     """ Convert np.array data to tensors to fit the network
